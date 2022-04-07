@@ -20,8 +20,8 @@ if __name__ == '__main__':
 
     s.start()
     m.markerStart()
+    time.sleep(5)
 
     for n in sn:
         s.show_hint(n)
         m.mark_label(n)
-
