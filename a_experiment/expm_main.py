@@ -13,22 +13,15 @@ def get_random_sn(class_num=2, exp_times=100):
     return res_sn
 
 
-def screen_th():
-    pass
-
-
 if __name__ == '__main__':
     m = Marker()
     s = ScreenShow()
     sn = get_random_sn(class_num=2, exp_times=100)
-    print(sn)
 
     s.start()
     m.markerStart()
-    time.sleep(5)
 
     for n in sn:
         s.show_hint(n)
         m.mark_label(n)
 
-# 随机序列

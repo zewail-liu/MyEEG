@@ -15,7 +15,7 @@ class ScreenShow:
     """
 
     def __init__(self):
-        self.image_path = os.getcwd()
+        self.image_path = os.path.dirname(__file__)
         self.black = np.zeros((1080, 1920, 3), dtype=np.float32)
         self.screen_id = 0
 
@@ -27,7 +27,7 @@ class ScreenShow:
         cv2.waitKey()
 
     def show_hint(self, hint_type: int):
-        hints = ['L', 'R']
+        hints = ['fist_left', 'fist_right']
         fn = self.image_path + fr'/{hints[hint_type]}.jpg'
         self.show_full_screen(self.black)
         winsound.MessageBeep(-1)
@@ -49,9 +49,9 @@ class ScreenShow:
 
 
 if __name__ == '__main__':
-
     t = ScreenShow()
     t.start()
+    t.show_hint(1)
 
     # import keyboard as k
     # while True:
@@ -62,6 +62,3 @@ if __name__ == '__main__':
     #         t.show_hint(0)
     #     elif e.name == 'q':
     #         exit()
-
-
-
