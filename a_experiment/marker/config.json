@@ -1,0 +1,14 @@
+
+{
+  "eeg_mark_port": "com4",
+  "eeg_mark_baud": 57600,
+  "eeg_port": "com6",
+  "eeg_baud":115200,
+
+  "sampling_rate": 1024,
+
+  "eeg_data_server_ip":"192.168.30.222",
+  "eeg_data_server_port":5555,
+
+  "data_block_time": 1
+}
