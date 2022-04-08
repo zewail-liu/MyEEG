@@ -64,15 +64,15 @@ def evaluate(model, X, Y, params=["acc"]):
     return results
 
 
-batch_size = 64
+batch_size = 16
 print(emoji.emojize('修改好模型参数了吗? 🤷‍♂️🤷‍♂️🤦‍♂️🤦‍♂️🤦‍♂️🤦‍♂️🤦‍♂️'))
-net = EEGNet(classes_num=2, num_channels=11, time_points=4096, drop_out=0.5).cuda(0)
+net = EEGNet(classes_num=2, num_channels=8, time_points=4096, drop_out=0.5).cuda(0)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=1e-3)
 
 # 载入数据
-dataset = Dataseter.Dataset_experiment_0304()
+dataset = Dataseter.Dataset_experiment_0408()
 train_dataset, test_dataset = torch.utils.data.random_split(
     dataset, [int(len(dataset) * 0.8), len(dataset) - int(len(dataset) * 0.8)])
 train_dataloader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
@@ -106,7 +106,7 @@ def train(epoch):
     print("Training Loss ", running_loss)
 
 
-def test():
+def test(max_test_res):
     with torch.no_grad():
         correct = 0
         total = 0
@@ -118,6 +118,7 @@ def test():
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
         print('accuracy on test set: %d %% ' % (100 * correct / total))
+        max_test_res = max(max_test_res, (100 * correct / total))
         correct = 0
         total = 0
         for data in train_dataloader:
@@ -128,9 +129,10 @@ def test():
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
         print('accuracy on train set: %d %% ' % (100 * correct / total))
+    return max_test_res
 
 
-log = 'EEGnet ' + 'exp0302' + '.pkl'
+log = 'EEGnet ' + 'exp0408' + '.pkl'
 only_test = False
 if __name__ == '__main__':
 
@@ -147,11 +149,13 @@ if __name__ == '__main__':
         test()
         exit()
 
+    max_test = 0
     for epoch in range(start_epoch + 1, 1000):
         train(epoch)
-        test()
+        max_test = test(max_test)
         state = {'model': net.state_dict(), 'optimizer': optimizer.state_dict(), 'epoch': epoch}
         torch.save(state, log)
+    print('best_test_result:', max_test)
 
     # 模型评价
     # params = ["acc", "auc"]
