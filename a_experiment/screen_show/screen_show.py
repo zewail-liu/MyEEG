@@ -27,7 +27,7 @@ class ScreenShow:
         cv2.waitKey()
 
     def show_hint(self, hint_type: int):
-        hints = ['fist_left', 'fist_right']
+        hints = ['fist_left', 'fist_right', 'tongue', 'feet']
         fn = self.image_path + fr'/{hints[hint_type]}.jpg'
         self.show_full_screen(self.black)
         winsound.MessageBeep(-1)
@@ -52,6 +52,8 @@ if __name__ == '__main__':
     t = ScreenShow()
     t.start()
     t.show_hint(1)
+    t.show_hint(2)
+    t.show_hint(3)
 
     # import keyboard as k
     # while True:

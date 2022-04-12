@@ -16,12 +16,13 @@ def get_random_sn(class_num=2, exp_times=100):
 if __name__ == '__main__':
     m = Marker()
     s = ScreenShow()
-    sn = get_random_sn(class_num=2, exp_times=100)
+    sn = get_random_sn(class_num=4, exp_times=60)
 
     s.start()
     m.markerStart()
 
     for n in sn:
-        s.show_hint(n)
         m.mark_label(n)
+        s.show_hint(n)
+
 
