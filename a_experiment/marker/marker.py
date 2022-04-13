@@ -72,7 +72,7 @@ class Marker:
 
     def mark_label(self, label):
         try:
-            self.__ser.write([label+1])  # 打mark
+            self.__ser.write([label])  # 打mark
             self.__ser.flush()
             time.sleep(self.wait_time)
             self.__ser.write([0])
@@ -115,4 +115,6 @@ if __name__ == '__main__':
     m = Marker()
     while True:
         m.mark_label(1)
+        time.sleep(1)
+        m.mark_label(2)
         time.sleep(1)

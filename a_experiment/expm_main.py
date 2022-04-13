@@ -23,5 +23,6 @@ if __name__ == '__main__':
     time.sleep(5)
 
     for n in sn:
+        m.mark_label(n + 20)
         s.show_hint(n)
-        m.mark_label(n)
+
