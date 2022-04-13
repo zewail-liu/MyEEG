@@ -30,7 +30,7 @@ class ScreenShow:
         hints = ['fist_left', 'fist_right', 'tongue', 'feet']
         fn = self.image_path + fr'/{hints[hint_type]}.jpg'
         self.show_full_screen(self.black)
-        winsound.MessageBeep(-1)
+        winsound.Beep(1250, 300)
         cv2.waitKey(1000)
         self.show_full_screen(cv2.imread(fn))
         cv2.waitKey(4000)
@@ -44,16 +44,24 @@ class ScreenShow:
         cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow(window_name, image)
 
+    def baseline(self):
+        fn = self.image_path + fr'/base.jpg'
+        self.show_full_screen(cv2.imread(fn))
+        cv2.waitKey(30000)
+        self.show_full_screen(self.black)
+        cv2.waitKey(100)
+
     def end(self):
         cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
     t = ScreenShow()
-    t.start()
-    t.show_hint(1)
-    t.show_hint(2)
-    t.show_hint(3)
+    t.baseline()
+    # t.start()
+    # t.show_hint(1)
+    # t.show_hint(2)
+    # t.show_hint(3)
 
     # import keyboard as k
     # while True:
