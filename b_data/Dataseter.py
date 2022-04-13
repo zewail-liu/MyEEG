@@ -66,6 +66,18 @@ class Dataset_experiment_0304(Dataset):
         return len(self.x)
 
 
+class Dataset_experiment_0408(Dataset):
+    def __init__(self):
+        self.x = np.load(r'D:\00-data\220408\data.npy').astype('float32')
+        self.y = np.load(r'D:\00-data\220408\labels.npy').astype('int64')
+
+    def __getitem__(self, item):
+        return self.x[item], self.y[item]
+
+    def __len__(self):
+        return len(self.x)
+
+
 def dataset_test(module: str):
     if module == 'bci_ii':
         m = Dataset_BCI_ii()
