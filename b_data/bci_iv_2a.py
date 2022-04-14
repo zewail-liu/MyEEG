@@ -52,19 +52,19 @@ def get_bci_iv_2a(subject: int):
     :param subject: SN of subject : [1,9]
     :return:
     """
-    raw = mne.io.read_raw_gdf(data_path + f'A0{subject}T.gdf', verbose='ERROR')
+    raw = mne.io.read_raw_gdf(data_path + f'A0{subject}T.gdf', verbose='Error')
     raw.rename_channels(rename_mapping)
     raw.drop_channels(['EOG-left', 'EOG-central', 'EOG-right'])
     raw._set_channel_positions(ch_pos, raw.ch_names)
     raw.crop(367)
-    raw.load_data()
+    raw.load_data(verbose='ERROR')
     raw.filter(0.1, None, verbose='ERROR')
     """ica"""
-    # ica = mne.preprocessing.ICA(n_components=13)
-    # ica.fit(raw)
+    ica = mne.preprocessing.ICA(n_components=13)
+    ica.fit(raw)
     # ica.plot_components()
-    # ica.exclude = [1, 3, 4]
-    # ica.apply(raw)
+    ica.exclude = [0, 1, 2, 3, 4]
+    ica.apply(raw)
     ch_pick = ['FC1', 'FC2', 'FC3', 'FC4',
                'C1', 'C2', 'C3', 'C4',
                'CP1', 'CP2', 'CP3', 'CP4']
@@ -88,10 +88,9 @@ def get_bci_iv_2a(subject: int):
     data = data[:, np.newaxis, :, :]
     labels = to_categorical(labels)  # one-hot
     train_data, test_data, train_label, test_label = train_test_split(data, labels, test_size=0.2, random_state=42)
-    print(train_data.shape)
-    print(train_label.shape)
+    print('data loaded.')
     return train_data, test_data, train_label, test_label
 
 
 if __name__ == '__main__':
-    get_bci_iv_2a(3)
+    get_bci_iv_2a(1)
