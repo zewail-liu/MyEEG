@@ -52,7 +52,8 @@ def get_physionet(subject: int):
 
     raw_LR_fist.rename_channels(rename_mapping)
     raw_fist_feet.rename_channels(rename_mapping)
-    ch_pick = ["FC1", "FC2", "FC3", "FC4", "C3", "C4", "C1", "C2",
+    ch_pick = ["FC1", "FC2", "FC3", "FC4",
+               "C1", "C2", "C3", "C4",
                "CP1", "CP2", "CP3", "CP4"]
 
     # get the data and labels
@@ -85,6 +86,8 @@ def get_physionet(subject: int):
         train_label = np.concatenate((train_label, train_label_ori))
         test_label = np.concatenate((test_label, test_label_ori))
     print('data loaded.')
+    train_data = train_data.swapaxes(1, 2)
+    test_data = test_data.swapaxes(1, 2)
     return train_data, test_data, train_label, test_label
 
 

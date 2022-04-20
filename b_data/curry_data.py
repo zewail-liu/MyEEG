@@ -213,21 +213,31 @@ def get_curry0413():
     label onehot (0, 0, 0, 1)
     """
     fn = r'D:\00-data\220413\Acquisition 23.cdt'
-    # ch_pick = ['Fp1', 'Fp2',
-    #            'F11', 'F7', 'F3', 'Fz', 'F4', 'F8', 'F12',
-    #            'FC3', 'FCz', 'FC4',
-    #            'T7', 'C3', 'Cz', 'C4', 'T8',
-    #            'CP3', 'CPz', 'CP4',
-    #            'P3', 'Pz', 'P4',
-    #            'O1', 'Oz', 'O2',
-    #            ]
-    ch_pick = ['C3', 'C4', ]
+    ch_pick = [
+        [
+            'Fp1', 'Fp2',
+            'F11', 'F7', 'F3', 'Fz', 'F4', 'F8', 'F12',
+            'FC3', 'FCz', 'FC4',
+            'T7', 'C3', 'Cz', 'C4', 'T8',
+            'CP3', 'CPz', 'CP4',
+            'P3', 'Pz', 'P4',
+            'O1', 'Oz', 'O2',
+        ],
+        [
+            'F3', 'F4',
+            'FC3', 'FC4',
+            'C3', 'C4',
+            'CP3', 'CP4',
+        ]
+    ]
+    # ch_pick = ['C3', 'C4', ]
     """raw part"""
     raw = mne.io.read_raw_curry(fn, verbose='ERROR')
-    raw.pick(ch_pick)
+    raw.pick(ch_pick[1], verbose='ERROR')
     raw.load_data()
-    raw.notch_filter(np.arange(50, 401, 50), verbose='ERROR')
-    raw.filter(0.1, None, verbose='ERROR')
+    raw.notch_filter(np.arange(50, 151, 50), verbose='ERROR')
+    raw.filter(0.1, 140, verbose='ERROR')
+
     # raw.plot_psd()
 
     """ica"""
@@ -263,6 +273,6 @@ def get_curry0413():
 
 
 if __name__ == '__main__':
-    train_data, train_label, test_data, test_label = get_curry0413()
-    print(train_data.shape)
-    print(train_label.shape)
+    res = get_curry0413()
+    for r in res:
+        print(r.shape)
