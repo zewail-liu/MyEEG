@@ -1,3 +1,4 @@
+# SMOTE demo
 from collections import Counter
 from sklearn.datasets import make_classification
 from imblearn.over_sampling import SMOTE

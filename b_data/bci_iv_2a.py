@@ -61,10 +61,10 @@ def get_bci_iv_2a(subject: int):
     raw.filter(0.1, None, verbose='ERROR')
     """ica"""
     ica = mne.preprocessing.ICA(n_components=13)
-    ica.fit(raw)
+    ica.fit(raw, verbose='ERROR')
     # ica.plot_components()
     ica.exclude = [0, 1, 2, 3, 4]
-    ica.apply(raw)
+    ica.apply(raw, verbose='ERROR')
     ch_pick = ['FC1', 'FC2', 'FC3', 'FC4',
                'C1', 'C2', 'C3', 'C4',
                'CP1', 'CP2', 'CP3', 'CP4']
@@ -73,7 +73,8 @@ def get_bci_iv_2a(subject: int):
     """epochs"""
     event_id = {'769': 0, '770': 1, '771': 2, '772': 3}
     events, _ = mne.events_from_annotations(raw, event_id, verbose='ERROR')
-    epochs = mne.Epochs(raw, events, tmin=-0.5 + 1 / 250, tmax=4, baseline=None, preload=True, verbose='ERROR')
+    epochs = mne.Epochs(raw, events, tmin=-0.5 + 1 / 250, tmax=4, baseline=None, picks=ch_pick, preload=True,
+                        verbose='ERROR')
 
     """scaler"""
     scaler = preprocessing.StandardScaler()
@@ -85,7 +86,6 @@ def get_bci_iv_2a(subject: int):
         data[i] = scaler.transform(data[i])
 
     """save"""
-    data = data[:, np.newaxis, :, :]
     labels = to_categorical(labels)  # one-hot
     train_data, test_data, train_label, test_label = train_test_split(data, labels, test_size=0.2, random_state=42)
     print('data loaded.')
@@ -93,4 +93,6 @@ def get_bci_iv_2a(subject: int):
 
 
 if __name__ == '__main__':
-    get_bci_iv_2a(1)
+    res = get_bci_iv_2a(1)
+    for r in res:
+        print(r.shape)

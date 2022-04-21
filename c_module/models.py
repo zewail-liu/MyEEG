@@ -1,27 +1,20 @@
-"""
-A 1D CNN for high accuracy classiﬁcation in motor imagery EEG-based brain-computer interface
-Journal of Neural Engineering (https://doi.org/10.1088/1741-2552/ac4430)
-Copyright (C) 2022  Francesco Mattioli, Gianluca Baldassarre, Camillo Porcaro
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""
 import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Activation, Permute, Dropout, Add, Lambda, DepthwiseConv2D, Input, Permute
+from tensorflow.keras.layers import Conv1D, Conv2D, MaxPooling2D, AveragePooling2D
+from tensorflow.keras.layers import SeparableConv2D, DepthwiseConv2D
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import SpatialDropout2D
+from tensorflow.keras.regularizers import l1_l2
+from tensorflow.keras.layers import Input, Flatten
+from tensorflow.keras.constraints import max_norm
+from tensorflow.keras import backend as K
 
 
 class HopefullNet(tf.keras.Model):
     """
     Original HopeFullNet
+    10.1088/1741-2552/ac4430
     """
 
     def __init__(self, inp_shape=(4096, 2), class_num=5):
@@ -84,6 +77,11 @@ class HopefullNet(tf.keras.Model):
 
 
 class SimpleCNN(tf.keras.Model):
+    """
+    no code from 10.3389/fnhum.2020.00338
+    try to use the same architecture as in the paper
+    """
+
     def __init__(self):
         super(SimpleCNN, self).__init__()
         self.conv1 = tf.keras.layers.Conv2D(filters=25, kernel_size=(11, 1), activation='relu', padding="valid", )
@@ -132,10 +130,189 @@ class SimpleCNN(tf.keras.Model):
         return dense1
 
 
+def EEGNet(nb_classes, Chans=64, Samples=128, dropoutRate=0.5, kernLength=64, F1=8, D=2, F2=16, norm_rate=0.25,
+           dropoutType='Dropout'):
+    """ Keras Implementation of EEGNet
+    http://iopscience.iop.org/article/10.1088/1741-2552/aace8c/meta
+
+    Note that this implements the newest version of EEGNet and NOT the earlier
+    version (version v1 and v2 on arxiv). We strongly recommend using this
+    architecture as it performs much better and has nicer properties than
+    our earlier version. For example:
+
+        1. Depthwise Convolutions to learn spatial filters within a
+        temporal convolution. The use of the depth_multiplier option maps
+        exactly to the number of spatial filters learned within a temporal
+        filter. This matches the setup of algorithms like FBCSP which learn
+        spatial filters within each filter in a filter-bank. This also limits
+        the number of free parameters to fit when compared to a fully-connected
+        convolution.
+
+        2. Separable Convolutions to learn how to optimally combine spatial
+        filters across temporal bands. Separable Convolutions are Depthwise
+        Convolutions followed by (1x1) Pointwise Convolutions.
+
+
+    While the original paper used Dropout, we found that SpatialDropout2D
+    sometimes produced slightly better results for classification of ERP
+    signals. However, SpatialDropout2D significantly reduced performance
+    on the Oscillatory dataset (SMR, BCI-IV Dataset 2A). We recommend using
+    the default Dropout in most cases.
+
+    Assumes the input signal is sampled at 128Hz. If you want to use this model
+    for any other sampling rate you will need to modify the lengths of temporal
+    kernels and average pooling size in blocks 1 and 2 as needed (double the
+    kernel lengths for double the sampling rate, etc). Note that we haven't
+    tested the model performance with this rule so this may not work well.
+
+    The model with default parameters gives the EEGNet-8,2 model as discussed
+    in the paper. This model should do pretty well in general, although it is
+	advised to do some model searching to get optimal performance on your
+	particular dataset.
+
+    We set F2 = F1 * D (number of input filters = number of output filters) for
+    the SeparableConv2D layer. We haven't extensively tested other values of this
+    parameter (say, F2 < F1 * D for compressed learning, and F2 > F1 * D for
+    overcomplete). We believe the main parameters to focus on are F1 and D.
+
+    Inputs:
+
+      nb_classes      : int, number of classes to classify
+      Chans, Samples  : number of channels and time points in the EEG data
+      dropoutRate     : dropout fraction
+      kernLength      : length of temporal convolution in first layer. We found
+                        that setting this to be half the sampling rate worked
+                        well in practice. For the SMR dataset in particular
+                        since the data was high-passed at 4Hz we used a kernel
+                        length of 32.
+      F1, F2          : number of temporal filters (F1) and number of pointwise
+                        filters (F2) to learn. Default: F1 = 8, F2 = F1 * D.
+      D               : number of spatial filters to learn within each temporal
+                        convolution. Default: D = 2
+      dropoutType     : Either SpatialDropout2D or Dropout, passed as a string.
+
+    """
+
+    if dropoutType == 'SpatialDropout2D':
+        dropoutType = SpatialDropout2D
+    elif dropoutType == 'Dropout':
+        dropoutType = Dropout
+    else:
+        raise ValueError('dropoutType must be one of SpatialDropout2D '
+                         'or Dropout, passed as a string.')
+
+    input1 = Input(shape=(Chans, Samples, 1))
+
+    ##################################################################
+    block1 = Conv2D(F1, (1, kernLength), padding='same',
+                    input_shape=(Chans, Samples, 1),
+                    use_bias=False)(input1)
+    block1 = BatchNormalization()(block1)
+    block1 = DepthwiseConv2D((Chans, 1), use_bias=False,
+                             depth_multiplier=D,
+                             depthwise_constraint=max_norm(1.))(block1)
+    block1 = BatchNormalization()(block1)
+    block1 = Activation('elu')(block1)
+    block1 = AveragePooling2D((1, 4))(block1)
+    block1 = dropoutType(dropoutRate)(block1)
+
+    block2 = SeparableConv2D(F2, (1, 16),
+                             use_bias=False, padding='same')(block1)
+    block2 = BatchNormalization()(block2)
+    block2 = Activation('elu')(block2)
+    block2 = AveragePooling2D((1, 8))(block2)
+    block2 = dropoutType(dropoutRate)(block2)
+
+    flatten = Flatten(name='flatten')(block2)
+
+    dense = Dense(nb_classes, name='dense',
+                  kernel_constraint=max_norm(norm_rate))(flatten)
+    softmax = Activation('softmax', name='softmax')(dense)
+
+    return Model(inputs=input1, outputs=softmax)
+
+
+def EEGTCNet(nb_classes, Chans=64, Samples=128, layers=3, kernel_s=10, filt=10, dropout=0, activation='relu', F1=4, D=2,
+             kernLength=64, dropout_eeg=0.1):
+    def EEGNet(input_layer, F1=4, kernLength=64, D=2, Chans=22, dropout=0.1):
+        F2 = F1 * D
+        block1 = Conv2D(F1, (kernLength, 1), padding='same', data_format='channels_last', use_bias=False)(input_layer)
+        block1 = BatchNormalization(axis=-1)(block1)
+        block2 = DepthwiseConv2D((1, Chans), use_bias=False,
+                                 depth_multiplier=D,
+                                 data_format='channels_last',
+                                 depthwise_constraint=max_norm(1.))(block1)
+        block2 = BatchNormalization(axis=-1)(block2)
+        block2 = Activation('elu')(block2)
+        block2 = AveragePooling2D((8, 1), data_format='channels_last')(block2)
+        block2 = Dropout(dropout)(block2)
+        block3 = SeparableConv2D(F2, (16, 1),
+                                 data_format='channels_last',
+                                 use_bias=False, padding='same')(block2)
+        block3 = BatchNormalization(axis=-1)(block3)
+        block3 = Activation('elu')(block3)
+        block3 = AveragePooling2D((8, 1), data_format='channels_last')(block3)
+        block3 = Dropout(dropout)(block3)
+        return block3
+
+    def TCN_block(input_layer, input_dimension, depth, kernel_size, filters, dropout, activation='relu'):
+
+        # Residual Block
+        block = Conv1D(filters, kernel_size=kernel_size, dilation_rate=1, activation='linear',
+                       padding='causal', kernel_initializer='he_uniform')(input_layer)
+        block = BatchNormalization()(block)
+        block = Activation(activation)(block)
+        block = Dropout(dropout)(block)
+        block = Conv1D(filters, kernel_size=kernel_size, dilation_rate=1, activation='linear',
+                       padding='causal', kernel_initializer='he_uniform')(block)
+        block = BatchNormalization()(block)
+        block = Activation(activation)(block)
+        block = Dropout(dropout)(block)
+
+        # conv1d added or ori data from last layer
+        if input_dimension != filters:
+            conv = Conv1D(filters, kernel_size=1, padding='same')(input_layer)
+            added = Add()([block, conv])
+        else:
+            added = Add()([block, input_layer])
+        out = Activation(activation)(added)
+
+        # nums of Residual
+        for i in range(depth - 1):
+            block = Conv1D(filters, kernel_size=kernel_size, dilation_rate=2 ** (i + 1), activation='linear',
+                           padding='causal', kernel_initializer='he_uniform')(out)
+            block = BatchNormalization()(block)
+            block = Activation(activation)(block)
+            block = Dropout(dropout)(block)
+            block = Conv1D(filters, kernel_size=kernel_size, dilation_rate=2 ** (i + 1), activation='linear',
+                           padding='causal', kernel_initializer='he_uniform')(block)
+            block = BatchNormalization()(block)
+            block = Activation(activation)(block)
+            block = Dropout(dropout)(block)
+            added = Add()([block, out])
+            out = Activation(activation)(added)
+
+        return out
+
+    # start the model
+    input1 = Input(shape=(1, Chans, Samples))
+    input2 = Permute((3, 2, 1))(input1)
+    regRate = .25
+    numFilters = F1
+    F2 = numFilters * D
+
+    EEGNet_sep = EEGNet(input_layer=input2, F1=F1, kernLength=kernLength, D=D, Chans=Chans, dropout=dropout_eeg)
+    block2 = Lambda(lambda x: x[:, :, -1, :])(EEGNet_sep)
+    outs = TCN_block(input_layer=block2, input_dimension=F2, depth=layers, kernel_size=kernel_s, filters=filt,
+                     dropout=dropout, activation=activation)
+    out = Lambda(lambda x: x[:, -1, :])(outs)
+    dense = Dense(nb_classes, name='dense', kernel_constraint=max_norm(regRate))(out)
+    softmax = Activation('softmax', name='softmax')(dense)
+
+    return Model(inputs=input1, outputs=softmax)
+
+
 if __name__ == '__main__':
-    # path = "YOUR MODEL PATH"
-    # model = tf.keras.models.load_model(path, custom_objects={"CustomModel": HopefullNet})
-    # model1 = HopefullNet()
     model = SimpleCNN()
     input_shape = (None, 640, 2)
     # model1.build(input_shape)
